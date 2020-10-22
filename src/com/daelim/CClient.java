@@ -4,7 +4,7 @@ import java.sql.SQLException;
 
 public class CClient {
     CDataBase cdb;
-    String uriString = "61.83.168.88:4877";
+    String uriString = "ws://61.83.168.88:4877";
     CSocket c;
     String nick;
 
@@ -21,6 +21,13 @@ public class CClient {
         while(cdb.rs.next()) {
             System.out.println(cdb.rs.getInt("idx"));
         }
+        c = new CSocket(uriString, new MessageHandler() {
+            @Override
+            public void handleMessage(String message) {
+                System.out.println(message);
+            }
+        });
+        c.start();
     }
 
 
