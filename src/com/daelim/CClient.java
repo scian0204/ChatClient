@@ -1,12 +1,15 @@
 package com.daelim;
 
+import org.json.simple.JSONObject;
+
 import java.sql.SQLException;
+import java.util.Scanner;
 
 public class CClient {
     CDataBase cdb;
     String uriString = "ws://61.83.168.88:4877";
     CSocket c;
-    String nick;
+    String nick=null;
 
     public CClient(CDataBase cdb) throws SQLException {
         this.cdb = cdb;
@@ -28,6 +31,17 @@ public class CClient {
             }
         });
         c.start();
+        while(true) {
+            Scanner sc = new Scanner(System.in);
+            String str = sc.nextLine();
+            if (str.equals("exit0")) break;
+            JSONObject jsono = new JSONObject();
+            jsono.put("name", nick);
+            jsono.put("data", str);
+            c.sendMsg(jsono.toString());
+        }
+        c.end();
+        System.out.println("끝");
     }
 
 
