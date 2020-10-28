@@ -11,7 +11,7 @@ public class CDataBase {
     ResultSet rs = null;
     Connection con = null;
 
-    public CDataBase() {
+    public void CDataBase() {
         try {
             // 1. 드라이버 로딩
             try {
