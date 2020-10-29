@@ -15,6 +15,9 @@ public class CClient extends JFrame {
     CSocket c;
     String nick = null;
 
+    String myId = null;
+    String myPw = null;
+
     JFrame th;
 
     //로그인 페이지
@@ -89,7 +92,7 @@ public class CClient extends JFrame {
     JButton ctrp_cancel = new JButton("취소");
 
     //채팅 페이지
-    JPanel chatPage = new JPanel();
+    JPanel cp = new JPanel();
 
     JButton cp_escapeRoom = new JButton("방 나가기");
     JButton cp_setRoom = new JButton("채팅방 설정");
@@ -97,10 +100,10 @@ public class CClient extends JFrame {
     JLabel cp_userName = null;
     JLabel cp_chatDate = null;
 
-    JTextField cp_othersChat = null;
-    JTextField cp_myChat = null;
+    JTextArea cp_othersChat = null;
+    JTextArea cp_myChat = null;
 
-    JTextField cp_msg = new JTextField();
+    JTextArea cp_msg = new JTextArea();
     JButton cp_send = new JButton("전송");
 
     //채팅 수정 페이지
@@ -108,9 +111,14 @@ public class CClient extends JFrame {
 
     JButton mcp_cancel = new JButton("취소");
 
-    JTextField mcp_id = new JTextField();
-    JTextField mcp_date = new JTextField();
-    JTextField mcp_cont = new JTextField();
+    JLabel mcp_idT = new JLabel("id");
+    JTextField mcp_idTF = new JTextField();
+
+    JLabel mcp_dateT = new JLabel("날짜");
+    JTextField mcp_dateTF = new JTextField();
+    
+    JLabel mcp_contT = new JLabel("내용");
+    JTextArea mcp_contTF = new JTextArea();
 
     JButton mcp_modify = new JButton("수정");
     JButton mcp_delete = new JButton("삭제");
@@ -132,17 +140,89 @@ public class CClient extends JFrame {
     JButton mcrp_modify = new JButton("수정");
     JButton mcrp_delete = new JButton("삭제");
 
-    public Font setFont(JLabel jl, float size) {
-        return jl.getFont().deriveFont(size);
+    public Font setFont(JComponent jc, float size) {
+        return jc.getFont().deriveFont(size);
     }
-    public Font setFont(JTextField jtf, float size) {
-        return jtf.getFont().deriveFont(size);
+
+
+
+    void loginCheck() {
+        if (lp_idTF.getText().equals("") || lp_pwTF.getText().equals("")) {
+            System.out.println("아이디나 패스워드 입력 안됨");
+//            jp0.add(idPwW);
+//            th.revalidate();
+//            th.repaint();
+        } else {
+            try {
+                cdb.rs = cdb.stmt.executeQuery("Select userpw from member where userid='" + lp_idTF.getText() + "'");
+                if (!cdb.rs.next()) {
+                    System.out.println("id 일치하지 않음");
+//                    jp0.add(idNfW);
+//                    th.revalidate();
+//                    th.repaint();
+                } else {
+                    if (cdb.rs.getString("userpw").equals(lp_pwTF.getText())) {
+                        System.out.println("로그인 됨");
+                        myId = lp_idTF.getText();
+                        myPw = lp_pwTF.getText();
+                        remove(lp);
+                        setChatRoomPage();
+                        add(crp);
+                        th.revalidate();
+                        th.repaint();
+
+                    } else {
+                        System.out.println("비밀번호 일치하지 않음");
+//                        jp0.add(pwNfW);
+//                        th.revalidate();
+//                        th.repaint();
+                    }
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
-    public Font setFont(JPasswordField jtf, float size) {
-        return jtf.getFont().deriveFont(size);
-    }
-    public Font setFont(JButton jb, float size) {
-        return jb.getFont().deriveFont(size);
+
+    void signUp() {
+//        removeWM();
+        if (rp_idTF.getText().equals("") || rp_pwTF.getText().equals("") || rp_pwrTF.getText().equals("") || rp_nameTF.getText().equals("") || rp_emailTF.getText().equals("")) {
+            System.out.println("빈칸 있음");
+//            jp0_1.add(nullW);
+//            th.revalidate();
+//            th.repaint();
+        } else if (!rp_pwTF.getText().equals(rp_pwrTF.getText())) {
+            System.out.println("비밀번호가 일치하지 않음");
+//            System.out.println(rp_pwTF.getText() + " || " + rp_pwrTF.getText());
+//            jp0_1.add(pwNmW);
+//            th.revalidate();
+//            th.repaint();
+        } else {
+            try {
+                cdb.rs = cdb.stmt.executeQuery("select * from member where userid='" + rp_idTF.getText() + "'");
+                if (!cdb.rs.next()) {
+                    cdb.stmt.executeUpdate("insert into member(userid, userpw, username, useremail) value('"
+                            + rp_idTF.getText() + "', '" + rp_pwTF.getText() + "', '"
+                            + rp_nameTF.getText() + "', '" + rp_emailTF.getText() + "')");
+                    myId = rp_idTF.getText();
+                    myPw = rp_pwTF.getText().toString();
+                    System.out.println("회원가입 됨");
+                    System.out.println("로그인 됨");
+                    remove(rp);
+                    setChatRoomPage();
+                    add(crp);
+                    th.revalidate();
+                    th.repaint();
+                } else {
+                    System.out.println("아이디 중복됨");
+//                    jp0_1.add(idOverlap);
+//                    th.revalidate();
+//                    th.repaint();
+                }
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
     }
 
     public CClient(CDataBase cdb) throws SQLException {
@@ -158,9 +238,8 @@ public class CClient extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         setLoginPage();
-        setRegistPage();
-        setChatRoomPage();
-        add(crp);
+//        setChatPage();
+        add(lp);
     }
 
     public void setLoginPage() {
@@ -190,7 +269,12 @@ public class CClient extends JFrame {
         lp_loginB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                loginCheck();
+//                remove(lp);
+//                setChatRoomPage();
+//                add(crp);
+//                th.revalidate();
+//                th.repaint();
             }
         });
         lp.add(lp_loginB);
@@ -201,7 +285,11 @@ public class CClient extends JFrame {
         lp_registB.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                remove(lp);
+                setRegistPage();
+                add(rp);
+                th.revalidate();
+                th.repaint();
             }
         });
         lp.add(lp_registB);
@@ -262,7 +350,12 @@ public class CClient extends JFrame {
         rp_regist.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                signUp();
+//                remove(rp);
+//                setChatRoomPage();
+//                add(crp);
+//                th.revalidate();
+//                th.repaint();
             }
         });
         rp.add(rp_regist);
@@ -273,7 +366,10 @@ public class CClient extends JFrame {
         rp_cancel.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                remove(rp);
+                add(lp);
+                th.revalidate();
+                th.repaint();
             }
         });
         rp.add(rp_cancel);
@@ -285,6 +381,15 @@ public class CClient extends JFrame {
         //로그아웃 버튼
         crp_logout.setBounds(0, 0, 220, 50);
         crp_logout.setFont(setFont(crp_logout, 25.0f));
+        crp_logout.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(crp);
+                add(lp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
         crp.add(crp_logout);
 
         //방 목록
@@ -293,33 +398,352 @@ public class CClient extends JFrame {
         //방 찾기 버튼
         crp_searchRoom.setBounds(25, 665, 175, 70);
         crp_searchRoom.setFont(setFont(crp_searchRoom, 20.0f));
+        crp_searchRoom.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(crp);
+                setRoomLoginPage();
+                add(rlp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
         crp.add(crp_searchRoom);
 
         //방 생성 버튼
         crp_createRoom.setBounds(225, 665, 175, 70);
         crp_createRoom.setFont(setFont(crp_createRoom, 20.0f));
+        crp_createRoom.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(crp);
+                setCreateRoomPage();
+                add(ctrp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
         crp.add(crp_createRoom);
     } //완성
 
     public void setRoomLoginPage() {
+        rlp.setLayout(null);
 
-    }
+        //id
+        rlp_idT.setBounds(100, 200, 100, 25);
+        rlp_idT.setFont(setFont(rlp_idT, 25.0f));
+        rlp.add(rlp_idT);
+
+        rlp_idTF.setBounds(100, 225, 250, 35);
+        rlp_idTF.setFont(setFont(rlp_idTF, 25.0f));
+        rlp.add(rlp_idTF);
+
+        //pw
+        rlp_pwT.setBounds(100, 270, 100, 25);
+        rlp_pwT.setFont(setFont(rlp_pwT, 25.0f));
+        rlp.add(rlp_pwT);
+
+        rlp_pwTF.setBounds(100, 295, 250, 35);
+        rlp_pwTF.setFont(setFont(rlp_pwTF, 25.0f));
+        rlp.add(lp_pwTF);
+
+        //입장 버튼
+        rlp_enter.setBounds(100, 530, 250, 70);
+        rlp_enter.setFont(setFont(rlp_enter, 25.0f));
+        rlp_enter.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(rlp);
+                setChatPage();
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        rlp.add(rlp_enter);
+
+        //취소 버튼
+        rlp_cancel.setBounds(100, 610, 250, 70);
+        rlp_cancel.setFont(setFont(rlp_cancel, 25.0f));
+        rlp_cancel.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(rlp);
+                add(crp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        rlp.add(rlp_cancel);
+    } //완성
 
     public void setCreateRoomPage() {
+        ctrp.setLayout(null);
 
-    }
+        //방 이름
+        ctrp_roomNameT.setBounds(100, 130, 100, 25);
+        ctrp_roomNameT.setFont(setFont(ctrp_roomNameT, 25.0f));
+        ctrp.add(ctrp_roomNameT);
+
+        ctrp_roomNameTF.setBounds(100, 155, 250, 35);
+        ctrp_roomNameTF.setFont(setFont(ctrp_roomNameTF, 25.0f));
+        ctrp.add(ctrp_roomNameTF);
+
+        //id
+        ctrp_idT.setBounds(100, 200, 100, 25);
+        ctrp_idT.setFont(setFont(ctrp_idT, 25.0f));
+        ctrp.add(ctrp_idT);
+
+        ctrp_idTF.setBounds(100, 225, 250, 35);
+        ctrp_idTF.setFont(setFont(ctrp_idTF, 25.0f));
+        ctrp.add(ctrp_idTF);
+
+        //pw
+        ctrp_pwT.setBounds(100, 270, 100, 25);
+        ctrp_pwT.setFont(setFont(ctrp_pwT, 25.0f));
+        ctrp.add(ctrp_pwT);
+
+        ctrp_pwTF.setBounds(100, 295, 250, 35);
+        ctrp_pwTF.setFont(setFont(ctrp_pwTF, 25.0f));
+        ctrp.add(ctrp_pwTF);
+
+        //방 생성 버튼
+        ctrp_createRoom.setBounds(100, 530, 250, 70);
+        ctrp_createRoom.setFont(setFont(ctrp_createRoom, 25.0f));
+        ctrp_createRoom.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(ctrp);
+                setChatPage();
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        ctrp.add(ctrp_createRoom);
+
+        //취소 버튼
+        ctrp_cancel.setBounds(100, 610, 250, 70);
+        ctrp_cancel.setFont(setFont(ctrp_cancel, 25.0f));
+        ctrp_cancel.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(ctrp);
+                add(crp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        ctrp.add(ctrp_cancel);
+
+    } //완성
 
     public void setChatPage() {
+        cp.setLayout(null);
 
-    }
+        //방 나가기 버튼
+        cp_escapeRoom.setBounds(0, 0, 217, 50);
+        cp_escapeRoom.setFont(setFont(cp_escapeRoom, 25.0f));
+        cp_escapeRoom.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(cp);
+                add(crp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        cp.add(cp_escapeRoom);
+
+        //방 설정 버튼
+        cp_setRoom.setBounds(217, 0, 217, 50);
+        cp_setRoom.setFont(setFont(cp_setRoom, 25.0f));
+        cp_setRoom.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(cp);
+                setModifyChatRoomPage();
+                add(mcrp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        cp.add(cp_setRoom);
+
+        //이름
+
+        //날짜
+
+        //타인 메시지
+
+        //내 메시지
+
+        //메시지 작성
+        cp_msg.setBounds(0, 581, 330, 180);
+        cp_msg.setFont(setFont(cp_msg, 20.0f));
+        cp_msg.setLineWrap(true);
+        cp.add(cp_msg);
+
+        //전송 버튼
+        cp_send.setBounds(330, 581, 104, 180);
+        cp_send.setFont(setFont(cp_send, 25.0f));
+        cp_send.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        });
+        cp.add(cp_send);
+
+    } //완성
 
     public void setModifyChatPage() {
+        mcp.setLayout(null);
 
-    }
+        // 취소 버튼
+        mcp_cancel.setBounds(0, 0, 217, 50);
+        mcp_cancel.setFont(setFont(mcp_cancel, 25.0f));
+        mcp_cancel.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(mcp);
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        mcp.add(mcp_cancel);
+
+        //id
+        mcp_idT.setBounds(25, 100, 100, 25);
+        mcp_idT.setFont(setFont(mcp_idT, 25.0f));
+        mcp.add(mcp_idT);
+
+        mcp_idTF.setBounds(25, 125, 385, 35);
+        mcp_idTF.setFont(setFont(mcp_idTF, 25.0f));
+        mcp.add(mcp_idTF);
+
+        //날짜
+        mcp_dateT.setBounds(25, 200, 100, 25);
+        mcp_dateT.setFont(setFont(mcp_dateT, 25.0f));
+        mcp.add(mcp_dateT);
+
+        mcp_dateTF.setBounds(25, 225, 385, 35);
+        mcp_dateTF.setFont(setFont(mcp_dateTF, 25.0f));
+        mcp.add(mcp_dateTF);
+
+        //내용
+        mcp_contT.setBounds(25, 300, 100, 25);
+        mcp_contT.setFont(setFont(mcp_contT, 25.0f));
+        mcp.add(mcp_contT);
+
+        mcp_contTF.setBounds(25, 325, 385, 250);
+        mcp_contTF.setFont(setFont(mcp_contTF, 20.0f));
+        mcp.add(mcp_contTF);
+
+        //수정 버튼
+        mcp_modify.setBounds(25, 665, 175, 70);
+        mcp_modify.setFont(setFont(mcp_modify, 20.0f));
+        mcp_modify.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(mcp);
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        mcp.add(mcp_modify);
+
+        //삭제 버튼
+        mcp_delete.setBounds(225, 665, 175, 70);
+        mcp_delete.setBackground(new Color(244, 177, 131));
+        mcp_delete.setFont(setFont(mcp_delete, 20.0f));
+        mcp_delete.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(mcp);
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        mcp.add(mcp_delete);
+    } //완성
 
     public void setModifyChatRoomPage() {
+        mcrp.setLayout(null);
 
-    }
+        // 취소 버튼
+        mcrp_cancel.setBounds(0, 0, 217, 50);
+        mcrp_cancel.setFont(setFont(mcrp_cancel, 25.0f));
+        mcrp_cancel.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(mcrp);
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        mcrp.add(mcrp_cancel);
+
+        //방 이름
+        mcrp_roomNameT.setBounds(100, 200, 100, 25);
+        mcrp_roomNameT.setFont(setFont(mcrp_roomNameT, 25.0f));
+        mcrp.add(mcrp_roomNameT);
+
+        mcrp_roomNameTF.setBounds(100, 225, 250, 35);
+        mcrp_roomNameTF.setFont(setFont(mcrp_roomNameTF, 25.0f));
+        mcrp.add(mcrp_roomNameTF);
+
+        //id
+        mcrp_idT.setBounds(100, 300, 100, 25);
+        mcrp_idT.setFont(setFont(mcrp_idT, 25.0f));
+        mcrp.add(mcrp_idT);
+
+        mcrp_idTF.setBounds(100, 325, 250, 35);
+        mcrp_idTF.setFont(setFont(mcrp_idTF, 25.0f));
+        mcrp.add(mcrp_idTF);
+
+        //pw
+        mcrp_pwT.setBounds(100, 400, 100, 25);
+        mcrp_pwT.setFont(setFont(mcrp_pwT, 25.0f));
+        mcrp.add(mcrp_pwT);
+
+        mcrp_pwTF.setBounds(100, 425, 250, 35);
+        mcrp_pwTF.setFont(setFont(mcrp_pwTF, 25.0f));
+        mcrp.add(mcrp_pwTF);
+
+        //수정 버튼
+        mcrp_modify.setBounds(25, 665, 175, 70);
+        mcrp_modify.setFont(setFont(mcrp_modify, 20.0f));
+        mcrp_modify.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(mcrp);
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        mcrp.add(mcrp_modify);
+
+        //삭제 버튼
+        mcrp_delete.setBounds(225, 665, 175, 70);
+        mcrp_delete.setBackground(new Color(244, 177, 131));
+        mcrp_delete.setFont(setFont(mcrp_delete, 20.0f));
+        mcrp_delete.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                remove(mcrp);
+                add(crp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        mcrp.add(mcrp_delete);
+    } //완성
 
     public void test() throws SQLException {
         cdb.rs = cdb.stmt.executeQuery("select * from chatmessage");
