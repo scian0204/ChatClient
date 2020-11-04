@@ -116,7 +116,7 @@ public class CClient extends JFrame {
 
     JLabel mcp_dateT = new JLabel("날짜");
     JTextField mcp_dateTF = new JTextField();
-    
+
     JLabel mcp_contT = new JLabel("내용");
     JTextArea mcp_contTF = new JTextArea();
 
@@ -143,8 +143,6 @@ public class CClient extends JFrame {
     public Font setFont(JComponent jc, float size) {
         return jc.getFont().deriveFont(size);
     }
-
-
 
     void loginCheck() {
         if (lp_idTF.getText().equals("") || lp_pwTF.getText().equals("")) {
@@ -445,7 +443,7 @@ public class CClient extends JFrame {
 
         rlp_pwTF.setBounds(100, 295, 250, 35);
         rlp_pwTF.setFont(setFont(rlp_pwTF, 25.0f));
-        rlp.add(lp_pwTF);
+        rlp.add(rlp_pwTF);
 
         //입장 버튼
         rlp_enter.setBounds(100, 530, 250, 70);
