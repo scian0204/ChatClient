@@ -19,6 +19,7 @@ public class CClient extends JFrame {
     String myPw = null;
 
     JFrame th;
+    GridBagLayout Gbag = new GridBagLayout();
 
     //로그인 페이지
     JPanel lp = new JPanel();
@@ -61,6 +62,10 @@ public class CClient extends JFrame {
     JButton crp_searchRoom = new JButton("ID로 방 찾기");
     JButton crp_createRoom = new JButton("방 생성");
 
+    JPanel crp_scp = new JPanel();
+    JPanel crp_bp = null;
+    JScrollPane crp_sp = null;
+    JScrollBar crp_sb = new JScrollBar(1, 30, 0, 0, 50);
     JLabel crp_nop = null;
     JButton crp_roomName = null;
 
@@ -142,6 +147,22 @@ public class CClient extends JFrame {
 
     public Font setFont(JComponent jc, float size) {
         return jc.getFont().deriveFont(size);
+    }
+
+    public void create_form(Component cmpt, int x, int y, int wx, int wy){
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridx = x;
+        gbc.gridy = y;
+        gbc.weightx = wx;
+        gbc.weighty = wy;
+//        gbc.gridwidth = w;
+//        gbc.gridheight = h;
+//        this.Gbag.setConstraints(cmpt, gbc);
+        crp_scp.add(cmpt, gbc);
+//        jp_label.updateUI();
+
     }
 
     void loginCheck() {
@@ -391,7 +412,30 @@ public class CClient extends JFrame {
         crp.add(crp_logout);
 
         //방 목록
-
+//        crp_scp.setSize(450, 585);
+        crp_scp.setLayout(Gbag);
+        crp_sp = new JScrollPane(crp_scp, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        crp_sp.setBounds(0, 50, 435, 585);
+        crp_sp.getVerticalScrollBar().setUnitIncrement(16);
+        crp_scp.setBackground(new Color(208, 206, 206));
+//        create_form(crp_sb, 400, 0, 50, 585);
+        for (int i=0; i<1000; i++) {
+            crp_bp = new JPanel();
+            crp_bp.setLayout(null);
+//            crp_bp.setSize(1000, 300);
+            crp_roomName = new JButton(i + "번째");
+//            crp_roomName.setBounds(50, 50, 200, 50);
+            crp_nop = new JLabel(i+"");
+//            jbt.setBounds(0, 50*i, 100, 30);
+//            crp_scp.add(jbt);
+//            crp_bp.add(crp_roomName);
+            crp_bp.setBackground(Color.gray);
+            create_form(crp_roomName, 1, i, 2, 1);
+            create_form(crp_nop, 1, i, 1, 1);
+        }
+//        crp_sp.createVerticalScrollBar();
+//        crp_sp.createHorizontalScrollBar();
+        crp.add(crp_sp);
 
         //방 찾기 버튼
         crp_searchRoom.setBounds(25, 665, 175, 70);
