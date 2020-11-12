@@ -6,7 +6,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class CClient extends JFrame {
@@ -20,6 +23,8 @@ public class CClient extends JFrame {
 
     JFrame th;
     GridBagLayout Gbag = new GridBagLayout();
+
+    HashMap<String, Boolean> hm = new HashMap<>();
 
     //로그인 페이지
     JPanel lp = new JPanel();
@@ -62,10 +67,8 @@ public class CClient extends JFrame {
     JButton crp_searchRoom = new JButton("ID로 방 찾기");
     JButton crp_createRoom = new JButton("방 생성");
 
-    JPanel crp_scp = new JPanel();
-    JPanel crp_bp = null;
+    JPanel crp_scp = null;
     JScrollPane crp_sp = null;
-    JScrollBar crp_sb = new JScrollBar(1, 30, 0, 0, 50);
     JLabel crp_nop = null;
     JButton crp_roomName = null;
 
@@ -149,19 +152,16 @@ public class CClient extends JFrame {
         return jc.getFont().deriveFont(size);
     }
 
-    public void create_form(Component cmpt, int x, int y, int wx, int wy){
-
+    public void create_form(Component cmpt, int x, int y, float wx, float wy){
         GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(25, 25, 0, 20);
         gbc.fill = GridBagConstraints.BOTH;
         gbc.gridx = x;
         gbc.gridy = y;
         gbc.weightx = wx;
         gbc.weighty = wy;
-//        gbc.gridwidth = w;
-//        gbc.gridheight = h;
-//        this.Gbag.setConstraints(cmpt, gbc);
+        cmpt.setFont(setFont((JComponent)cmpt, 25.0f));
         crp_scp.add(cmpt, gbc);
-//        jp_label.updateUI();
 
     }
 
@@ -185,7 +185,13 @@ public class CClient extends JFrame {
                         myId = lp_idTF.getText();
                         myPw = lp_pwTF.getText();
                         remove(lp);
-                        setChatRoomPage();
+                        if (!hm.get("crp_flag")) {
+                            System.out.println(hm.get("crp_flag"));
+                            setChatRoomPage();
+                        } else {
+                            crp.remove(crp_sp);
+                            createRoomList();
+                        }
                         add(crp);
                         th.revalidate();
                         th.repaint();
@@ -228,7 +234,13 @@ public class CClient extends JFrame {
                     System.out.println("회원가입 됨");
                     System.out.println("로그인 됨");
                     remove(rp);
-                    setChatRoomPage();
+                    if (!hm.get("crp_flag")) {
+                        System.out.println(hm.get("crp_flag"));
+                        setChatRoomPage();
+                    } else {
+                        crp.remove(crp_sp);
+                        createRoomList();
+                    }
                     add(crp);
                     th.revalidate();
                     th.repaint();
@@ -244,6 +256,55 @@ public class CClient extends JFrame {
         }
     }
 
+    void createRoomList() throws SQLException {
+        System.out.println("방리스트 생성 메서드 실행");
+        cdb.rs = cdb.stmt.executeQuery("select * from chatroom");
+        int i = 0;
+        crp_scp = new JPanel();
+        crp_scp.setLayout(Gbag);
+        crp_sp = new JScrollPane(crp_scp, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        crp_sp.setBounds(0, 50, 435, 585);
+        crp_sp.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 속도
+        crp_scp.setBackground(new Color(208, 206, 206));
+        while(cdb.rs.next()) {
+            crp_roomName = new JButton(cdb.rs.getString("roomname"));
+            crp_roomName.addActionListener(new ActionListener() {
+                ResultSet rs = cdb.rs;
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    try {
+                        System.out.println(rs.getString("roomid"));
+                        System.out.println(rs.getString("roompw"));
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
+                }
+            });
+            crp_nop = new JLabel(cdb.rs.getString("roomnop"));
+            create_form(crp_roomName, 0, 2*i, 10.0f, 1);
+            create_form(crp_nop, 1, 2*i, 0.1f, 1);
+            i++;
+        }
+        crp_scp.updateUI();
+        crp_scp.revalidate();
+        crp_scp.repaint();
+        crp_sp.updateUI();
+        crp_sp.revalidate();
+        crp_sp.repaint();
+        crp.add(crp_sp);
+        crp.updateUI();
+        crp.revalidate();
+        crp.repaint();
+    }
+
+    void createRoom(String roomid, String roompw, String roomname) throws SQLException {
+        int roomnop = 0;
+        String userid = myId;
+        String sql = "INSERT INTO chatroom(roomid, roompw, roomname, roomnop, userid) values('"
+                +roomid+"', '"+roompw+"', '"+roomname+"', "+roomnop+", '"+userid+"')";
+        cdb.stmt.executeUpdate(sql);
+    }
+
     public CClient(CDataBase cdb) throws SQLException {
         this.cdb = cdb;
         th = this;
@@ -256,8 +317,17 @@ public class CClient extends JFrame {
         setVisible(true);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+        hm.put("lp_flag", false);
+        hm.put("rp_flag", false);
+        hm.put("crp_flag", false);
+        hm.put("rlp_flag", false);
+        hm.put("ctrp_flag", false);
+        hm.put("cp_flag", false);
+        hm.put("mcp_flag", false);
+        hm.put("mcrp_flag", false);
+
         setLoginPage();
-//        setChatPage();
+//        setChatRoomPage();
         add(lp);
     }
 
@@ -394,7 +464,8 @@ public class CClient extends JFrame {
         rp.add(rp_cancel);
     } //완성
 
-    public void setChatRoomPage() {
+    public void setChatRoomPage() throws SQLException {
+        hm.put("crp_flag", true);
         crp.setLayout(null);
 
         //로그아웃 버튼
@@ -412,30 +483,7 @@ public class CClient extends JFrame {
         crp.add(crp_logout);
 
         //방 목록
-//        crp_scp.setSize(450, 585);
-        crp_scp.setLayout(Gbag);
-        crp_sp = new JScrollPane(crp_scp, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        crp_sp.setBounds(0, 50, 435, 585);
-        crp_sp.getVerticalScrollBar().setUnitIncrement(16);
-        crp_scp.setBackground(new Color(208, 206, 206));
-//        create_form(crp_sb, 400, 0, 50, 585);
-        for (int i=0; i<1000; i++) {
-            crp_bp = new JPanel();
-            crp_bp.setLayout(null);
-//            crp_bp.setSize(1000, 300);
-            crp_roomName = new JButton(i + "번째");
-//            crp_roomName.setBounds(50, 50, 200, 50);
-            crp_nop = new JLabel(i+"");
-//            jbt.setBounds(0, 50*i, 100, 30);
-//            crp_scp.add(jbt);
-//            crp_bp.add(crp_roomName);
-            crp_bp.setBackground(Color.gray);
-            create_form(crp_roomName, 1, i, 2, 1);
-            create_form(crp_nop, 1, i, 1, 1);
-        }
-//        crp_sp.createVerticalScrollBar();
-//        crp_sp.createHorizontalScrollBar();
-        crp.add(crp_sp);
+        createRoomList();
 
         //방 찾기 버튼
         crp_searchRoom.setBounds(25, 665, 175, 70);
@@ -444,7 +492,10 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(crp);
-                setRoomLoginPage();
+                if (!hm.get("rlp_flag")) {
+                    System.out.println(hm.get("rlp_flag"));
+                    setRoomLoginPage();
+                }
                 add(rlp);
                 th.revalidate();
                 th.repaint();
@@ -459,7 +510,10 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(crp);
-                setCreateRoomPage();
+                if (!hm.get("ctrp_flag")) {
+                    System.out.println(hm.get("ctrp_flag"));
+                    setCreateRoomPage();
+                }
                 add(ctrp);
                 th.revalidate();
                 th.repaint();
@@ -469,6 +523,7 @@ public class CClient extends JFrame {
     } //완성
 
     public void setRoomLoginPage() {
+        hm.put("rlp_flag", true);
         rlp.setLayout(null);
 
         //id
@@ -496,7 +551,10 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(rlp);
-                setChatPage();
+                if (!hm.get("cp_flag")) {
+                    System.out.println(hm.get("cp_flag"));
+                    setChatPage();
+                }
                 add(cp);
                 th.revalidate();
                 th.repaint();
@@ -511,6 +569,12 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(rlp);
+                try {
+                    crp.remove(crp_sp);
+                    createRoomList();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 add(crp);
                 th.revalidate();
                 th.repaint();
@@ -520,6 +584,7 @@ public class CClient extends JFrame {
     } //완성
 
     public void setCreateRoomPage() {
+        hm.put("ctrp_flag", true);
         ctrp.setLayout(null);
 
         //방 이름
@@ -555,11 +620,23 @@ public class CClient extends JFrame {
         ctrp_createRoom.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                remove(ctrp);
-                setChatPage();
-                add(cp);
-                th.revalidate();
-                th.repaint();
+                if (ctrp_idTF.getText().equals("") || ctrp_pwTF.getText().equals("") || ctrp_roomNameTF.getText().equals("")) {
+                    System.out.println("빈 칸 있음");
+                } else {
+                    try {
+                        createRoom(ctrp_idTF.getText(), ctrp_pwTF.getText(), ctrp_roomNameTF.getText());
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
+                    remove(ctrp);
+                    if (!hm.get("cp_flag")) {
+                        System.out.println(hm.get("cp_flag"));
+                        setChatPage();
+                    }
+                    add(cp);
+                    th.revalidate();
+                    th.repaint();
+                }
             }
         });
         ctrp.add(ctrp_createRoom);
@@ -571,6 +648,12 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(ctrp);
+                try {
+                    crp.remove(crp_sp);
+                    createRoomList();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 add(crp);
                 th.revalidate();
                 th.repaint();
@@ -581,6 +664,7 @@ public class CClient extends JFrame {
     } //완성
 
     public void setChatPage() {
+        hm.put("cp_flag", true);
         cp.setLayout(null);
 
         //방 나가기 버튼
@@ -590,6 +674,12 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(cp);
+                try {
+                    crp.remove(crp_sp);
+                    createRoomList();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 add(crp);
                 th.revalidate();
                 th.repaint();
@@ -604,7 +694,10 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(cp);
-                setModifyChatRoomPage();
+                if (!hm.get("mcrp_flag")) {
+                    System.out.println(hm.get("mcrp_flag"));
+                    setModifyChatRoomPage();
+                }
                 add(mcrp);
                 th.revalidate();
                 th.repaint();
@@ -640,6 +733,7 @@ public class CClient extends JFrame {
     } //완성
 
     public void setModifyChatPage() {
+        hm.put("mcp_flag", true);
         mcp.setLayout(null);
 
         // 취소 버튼
@@ -714,6 +808,7 @@ public class CClient extends JFrame {
     } //완성
 
     public void setModifyChatRoomPage() {
+        hm.put("mcrp_flag", true);
         mcrp.setLayout(null);
 
         // 취소 버튼
@@ -779,6 +874,12 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(mcrp);
+                try {
+                    crp.remove(crp_sp);
+                    createRoomList();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 add(crp);
                 th.revalidate();
                 th.repaint();
