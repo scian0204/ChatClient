@@ -8,6 +8,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -108,8 +109,11 @@ public class CClient extends JFrame {
     JLabel cp_userName = null;
     JLabel cp_chatDate = null;
 
-    JTextArea cp_othersChat = null;
-    JTextArea cp_myChat = null;
+    JLabel cp_othersChat = null;
+    JButton cp_myChat = null;
+
+    JPanel cp_scp = null;
+    JScrollPane cp_sp = null;
 
     JTextArea cp_msg = new JTextArea();
     JButton cp_send = new JButton("전송");
@@ -152,16 +156,16 @@ public class CClient extends JFrame {
         return jc.getFont().deriveFont(size);
     }
 
-    public void create_form(Component cmpt, int x, int y, float wx, float wy){
+    public void create_form(Component cmpt, int x, int y, float wx, float wy, JPanel jp, int it, int il, int ib, int ir, float fs){
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(25, 25, 0, 20);
+        gbc.insets = new Insets(it, il, ib, ir);
         gbc.fill = GridBagConstraints.BOTH;
         gbc.gridx = x;
         gbc.gridy = y;
         gbc.weightx = wx;
         gbc.weighty = wy;
-        cmpt.setFont(setFont((JComponent)cmpt, 25.0f));
-        crp_scp.add(cmpt, gbc);
+        cmpt.setFont(setFont((JComponent)cmpt, fs));
+        jp.add(cmpt, gbc);
 
     }
 
@@ -257,9 +261,9 @@ public class CClient extends JFrame {
     }
 
     void createRoomList() throws SQLException {
+        int i = 0;
         System.out.println("방리스트 생성 메서드 실행");
         cdb.rs = cdb.stmt.executeQuery("select * from chatroom");
-        int i = 0;
         crp_scp = new JPanel();
         crp_scp.setLayout(Gbag);
         crp_sp = new JScrollPane(crp_scp, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
@@ -267,22 +271,27 @@ public class CClient extends JFrame {
         crp_sp.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 속도
         crp_scp.setBackground(new Color(208, 206, 206));
         while(cdb.rs.next()) {
+            JLabel crp_temp = new JLabel(cdb.rs.getString("roomid"));
             crp_roomName = new JButton(cdb.rs.getString("roomname"));
             crp_roomName.addActionListener(new ActionListener() {
-                ResultSet rs = cdb.rs;
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    try {
-                        System.out.println(rs.getString("roomid"));
-                        System.out.println(rs.getString("roompw"));
-                    } catch (SQLException throwables) {
-                        throwables.printStackTrace();
+                    System.out.println(crp_temp.getText());
+                    remove(crp);
+                    if (!hm.get("rlp_flag")) {
+                        System.out.println(hm.get("rlp_flag"));
+                        setRoomLoginPage(crp_temp.getText());
+                    } else {
+                        rlp_idTF.setText(crp_temp.getText());
                     }
+                    add(rlp);
+                    th.revalidate();
+                    th.repaint();
                 }
             });
             crp_nop = new JLabel(cdb.rs.getString("roomnop"));
-            create_form(crp_roomName, 0, 2*i, 10.0f, 1);
-            create_form(crp_nop, 1, 2*i, 0.1f, 1);
+            create_form(crp_roomName, 0, 2*i, 10.0f, 0.01f, crp_scp, 25, 25, 0, 20, 25.0f);
+            create_form(crp_nop, 1, 2*i, 0.1f, 0.01f, crp_scp, 25, 25, 0, 20, 25.0f);
             i++;
         }
         crp_scp.updateUI();
@@ -297,12 +306,71 @@ public class CClient extends JFrame {
         crp.repaint();
     }
 
-    void createRoom(String roomid, String roompw, String roomname) throws SQLException {
-        int roomnop = 0;
-        String userid = myId;
-        String sql = "INSERT INTO chatroom(roomid, roompw, roomname, roomnop, userid) values('"
-                +roomid+"', '"+roompw+"', '"+roomname+"', "+roomnop+", '"+userid+"')";
-        cdb.stmt.executeUpdate(sql);
+    boolean createRoom(String roomid, String roompw, String roomname) throws SQLException {
+        cdb.rs = cdb.stmt.executeQuery("select * from chatroom where roomid='"+roomid+"'");
+        if (!cdb.rs.next()) {
+            int roomnop = 0;
+            String userid = myId;
+            String sql = "INSERT INTO chatroom(roomid, roompw, roomname, roomnop, userid) values('"
+                    + roomid + "', '" + roompw + "', '" + roomname + "', " + roomnop + ", '" + userid + "')";
+            cdb.stmt.executeUpdate(sql);
+            return true;
+        } else {
+            System.out.println("roomid 중복됨");
+            return false;
+        }
+    }
+
+    boolean roomLoginCheck(String roomid, String roompw) throws SQLException {
+        cdb.rs = cdb.stmt.executeQuery("select * from chatroom where roomid='"+roomid+"' and roompw='"+roompw+"'");
+        if (cdb.rs.next()) {
+            return true;
+        } else {
+            System.out.println("로그인 안됨");
+            return false;
+        }
+    }
+
+    void loadChat(String roomId) throws SQLException {
+        System.out.println("loadChat 실행");
+        cdb.rs = cdb.stmt.executeQuery("select * from chatmessage where roomid='"+roomId+"'");
+        int i = 0;
+        cp_scp = new JPanel();
+        cp_scp.setLayout(Gbag);
+        cp_sp = new JScrollPane(cp_scp, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        cp_sp.setBounds(0, 50, 435, 532);
+        cp_sp.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 속도
+        cp_scp.setBackground(new Color(208, 206, 206));
+        while (cdb.rs.next()) {
+            System.out.println("데이터 있음");
+            cp_userName = new JLabel(cdb.rs.getString("userid"));
+            cp_chatDate = new JLabel(cdb.rs.getString("writedate"));
+            if (cp_userName.getText().equals(myId)) {
+                cp_myChat = new JButton(cdb.rs.getString("message"));
+                create_form(cp_chatDate, 1, 1*i, 0.1f, 0.1f, cp_scp, 0, 0, 10, 0, 10.0f);
+                cp_chatDate.setHorizontalAlignment(JLabel.RIGHT);
+                create_form(cp_myChat, 2, 1*i, 0.1f, 0.1f, cp_scp, 0, 0, 10, 0, 20.0f);
+            } else {
+                cp_othersChat = new JLabel(cdb.rs.getString("message"));
+                cp_othersChat.setBackground(Color.WHITE);
+                create_form(cp_userName, 0, 1*i, 0, 0, cp_scp, 0, 0, 0, 0, 10.0f);
+                create_form(cp_othersChat, 0, 1*i+1, 0, 0, cp_scp, 0, 0, 10, 0, 20.0f);
+                create_form(cp_chatDate, 1, 1*i+1, 0, 0, cp_scp, 0, 0, 10, 0, 10.0f);
+            }
+
+            i+=2;
+        }
+
+        cp_scp.updateUI();
+        cp_scp.revalidate();
+        cp_scp.repaint();
+        cp_sp.updateUI();
+        cp_sp.revalidate();
+        cp_sp.repaint();
+        cp.add(cp_sp);
+        cp.updateUI();
+        cp.revalidate();
+        cp.repaint();
     }
 
     public CClient(CDataBase cdb) throws SQLException {
@@ -314,7 +382,6 @@ public class CClient extends JFrame {
 
     public void setUI() {
         setSize(450, 800);
-        setVisible(true);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         hm.put("lp_flag", false);
@@ -329,6 +396,7 @@ public class CClient extends JFrame {
         setLoginPage();
 //        setChatRoomPage();
         add(lp);
+        setVisible(true);
     }
 
     public void setLoginPage() {
@@ -494,7 +562,9 @@ public class CClient extends JFrame {
                 remove(crp);
                 if (!hm.get("rlp_flag")) {
                     System.out.println(hm.get("rlp_flag"));
-                    setRoomLoginPage();
+                    setRoomLoginPage("");
+                } else {
+                    rlp_idTF.setText("");
                 }
                 add(rlp);
                 th.revalidate();
@@ -522,7 +592,7 @@ public class CClient extends JFrame {
         crp.add(crp_createRoom);
     } //완성
 
-    public void setRoomLoginPage() {
+    public void setRoomLoginPage(String roomId) {
         hm.put("rlp_flag", true);
         rlp.setLayout(null);
 
@@ -533,6 +603,7 @@ public class CClient extends JFrame {
 
         rlp_idTF.setBounds(100, 225, 250, 35);
         rlp_idTF.setFont(setFont(rlp_idTF, 25.0f));
+        rlp_idTF.setText(roomId);
         rlp.add(rlp_idTF);
 
         //pw
@@ -550,14 +621,23 @@ public class CClient extends JFrame {
         rlp_enter.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                remove(rlp);
-                if (!hm.get("cp_flag")) {
-                    System.out.println(hm.get("cp_flag"));
-                    setChatPage();
+                try {
+                    if (roomLoginCheck(rlp_idTF.getText(), rlp_pwTF.getText())) {
+                        remove(rlp);
+                        if (!hm.get("cp_flag")) {
+                            System.out.println(hm.get("cp_flag"));
+                            setChatPage(rlp_idTF.getText());
+                        } else {
+                            cp.remove(cp_sp);
+                            loadChat(rlp_idTF.getText());
+                        }
+                        add(cp);
+                        th.revalidate();
+                        th.repaint();
+                    }
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
                 }
-                add(cp);
-                th.revalidate();
-                th.repaint();
             }
         });
         rlp.add(rlp_enter);
@@ -624,18 +704,22 @@ public class CClient extends JFrame {
                     System.out.println("빈 칸 있음");
                 } else {
                     try {
-                        createRoom(ctrp_idTF.getText(), ctrp_pwTF.getText(), ctrp_roomNameTF.getText());
+                        if (createRoom(ctrp_idTF.getText(), ctrp_pwTF.getText(), ctrp_roomNameTF.getText())) {
+                            remove(ctrp);
+                            if (!hm.get("cp_flag")) {
+                                System.out.println(hm.get("cp_flag"));
+                                setChatPage(ctrp_idTF.getText());
+                            } else {
+                                cp.remove(cp_sp);
+                                loadChat(ctrp_idTF.getText());
+                            }
+                            add(cp);
+                            th.revalidate();
+                            th.repaint();
+                        }
                     } catch (SQLException throwables) {
                         throwables.printStackTrace();
                     }
-                    remove(ctrp);
-                    if (!hm.get("cp_flag")) {
-                        System.out.println(hm.get("cp_flag"));
-                        setChatPage();
-                    }
-                    add(cp);
-                    th.revalidate();
-                    th.repaint();
                 }
             }
         });
@@ -663,7 +747,7 @@ public class CClient extends JFrame {
 
     } //완성
 
-    public void setChatPage() {
+    public void setChatPage(String roomId) throws SQLException {
         hm.put("cp_flag", true);
         cp.setLayout(null);
 
@@ -705,6 +789,7 @@ public class CClient extends JFrame {
         });
         cp.add(cp_setRoom);
 
+        loadChat(roomId);
         //이름
 
         //날짜
