@@ -21,6 +21,7 @@ public class CClient extends JFrame {
 
     String myId = null;
     String myPw = null;
+    String roomId = null;
 
     JFrame th;
     GridBagLayout Gbag = new GridBagLayout();
@@ -124,10 +125,10 @@ public class CClient extends JFrame {
     JButton mcp_cancel = new JButton("취소");
 
     JLabel mcp_idT = new JLabel("id");
-    JTextField mcp_idTF = new JTextField();
+    JLabel mcp_idTF = new JLabel();
 
     JLabel mcp_dateT = new JLabel("날짜");
-    JTextField mcp_dateTF = new JTextField();
+    JLabel mcp_dateTF = new JLabel();
 
     JLabel mcp_contT = new JLabel("내용");
     JTextArea mcp_contTF = new JTextArea();
@@ -314,6 +315,7 @@ public class CClient extends JFrame {
             String sql = "INSERT INTO chatroom(roomid, roompw, roomname, roomnop, userid) values('"
                     + roomid + "', '" + roompw + "', '" + roomname + "', " + roomnop + ", '" + userid + "')";
             cdb.stmt.executeUpdate(sql);
+            this.roomId = roomid;
             return true;
         } else {
             System.out.println("roomid 중복됨");
@@ -324,6 +326,7 @@ public class CClient extends JFrame {
     boolean roomLoginCheck(String roomid, String roompw) throws SQLException {
         cdb.rs = cdb.stmt.executeQuery("select * from chatroom where roomid='"+roomid+"' and roompw='"+roompw+"'");
         if (cdb.rs.next()) {
+            this.roomId = roomid;
             return true;
         } else {
             System.out.println("로그인 안됨");
@@ -337,23 +340,67 @@ public class CClient extends JFrame {
         int i = 0;
         cp_scp = new JPanel();
         cp_scp.setLayout(Gbag);
+        cp_scp.setSize(435, 532);
         cp_sp = new JScrollPane(cp_scp, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        cp_sp.setSize(435, 532);
         cp_sp.setBounds(0, 50, 435, 532);
         cp_sp.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 속도
         cp_scp.setBackground(new Color(208, 206, 206));
         while (cdb.rs.next()) {
-            System.out.println("데이터 있음");
-            cp_userName = new JLabel(cdb.rs.getString("userid"));
-            cp_chatDate = new JLabel(cdb.rs.getString("writedate"));
+            String message = cdb.rs.getString("message");
+            String userid = cdb.rs.getString("userid");
+            String writedate = cdb.rs.getString("writedate");
+            if (message.length() > 10) {
+                int cnt = message.length() / 10;
+                int start = 0;
+                int end = 0;
+                for (int j=0; j<cnt; j++) {
+                    start = j * 10;
+                    end = start+10 + (j*4);
+                    message = message.substring(0, end) + "<br>" + message.substring(end);
+//                    System.out.println(message);
+                }
+            }
+            message = "<HTML>" + message;
+            message += "</HTML>";
+            cp_userName = new JLabel(userid);
+            cp_chatDate = new JLabel(writedate);
             if (cp_userName.getText().equals(myId)) {
-                cp_myChat = new JButton(cdb.rs.getString("message"));
+                JLabel cp_temp = new JLabel(cdb.rs.getString("idx"));
+                cp_myChat = new JButton(message);
                 create_form(cp_chatDate, 1, 1*i, 0.1f, 0.1f, cp_scp, 0, 0, 10, 0, 10.0f);
                 cp_chatDate.setHorizontalAlignment(JLabel.RIGHT);
+                cp_myChat.setHorizontalAlignment(JLabel.RIGHT);
                 create_form(cp_myChat, 2, 1*i, 0.1f, 0.1f, cp_scp, 0, 0, 10, 0, 20.0f);
+                cp_myChat.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        String idx = cp_temp.getText();
+                        try {
+                            cdb.rs = cdb.stmt.executeQuery("select * from chatmessage where idx='"+idx+"'");
+                            if (cdb.rs.next()) {
+                                remove(cp);
+                                if (!hm.get("mcp_flag")) {
+                                    setModifyChatPage();
+                                }
+                                mcp_idTF.setText(cdb.rs.getString("idx"));
+                                mcp_dateTF.setText(cdb.rs.getString("writedate"));
+                                mcp_contTF.setText(cdb.rs.getString("message"));
+                                add(mcp);
+                                th.revalidate();
+                                th.repaint();
+                            }
+                        } catch (SQLException throwables) {
+                            throwables.printStackTrace();
+                        }
+                    }
+                });
             } else {
-                cp_othersChat = new JLabel(cdb.rs.getString("message"));
+                cp_othersChat = new JLabel(message);
+                cp_othersChat.setOpaque(true);
                 cp_othersChat.setBackground(Color.WHITE);
-                create_form(cp_userName, 0, 1*i, 0, 0, cp_scp, 0, 0, 0, 0, 10.0f);
+                cp_othersChat.setHorizontalAlignment(JLabel.LEFT);
+                create_form(cp_userName, 0, 1*i, 0, 0, cp_scp, 0, 0, 0, 0, 15.0f);
                 create_form(cp_othersChat, 0, 1*i+1, 0, 0, cp_scp, 0, 0, 10, 0, 20.0f);
                 create_form(cp_chatDate, 1, 1*i+1, 0, 0, cp_scp, 0, 0, 10, 0, 10.0f);
             }
@@ -592,7 +639,7 @@ public class CClient extends JFrame {
         crp.add(crp_createRoom);
     } //완성
 
-    public void setRoomLoginPage(String roomId) {
+    public void setRoomLoginPage(String roomid) {
         hm.put("rlp_flag", true);
         rlp.setLayout(null);
 
@@ -603,7 +650,7 @@ public class CClient extends JFrame {
 
         rlp_idTF.setBounds(100, 225, 250, 35);
         rlp_idTF.setFont(setFont(rlp_idTF, 25.0f));
-        rlp_idTF.setText(roomId);
+        rlp_idTF.setText(roomid);
         rlp.add(rlp_idTF);
 
         //pw
@@ -626,7 +673,8 @@ public class CClient extends JFrame {
                         remove(rlp);
                         if (!hm.get("cp_flag")) {
                             System.out.println(hm.get("cp_flag"));
-                            setChatPage(rlp_idTF.getText());
+                            roomId = rlp_idTF.getText();
+                            setChatPage();
                         } else {
                             cp.remove(cp_sp);
                             loadChat(rlp_idTF.getText());
@@ -708,7 +756,8 @@ public class CClient extends JFrame {
                             remove(ctrp);
                             if (!hm.get("cp_flag")) {
                                 System.out.println(hm.get("cp_flag"));
-                                setChatPage(ctrp_idTF.getText());
+                                roomId = ctrp_idTF.getText();
+                                setChatPage();
                             } else {
                                 cp.remove(cp_sp);
                                 loadChat(ctrp_idTF.getText());
@@ -747,7 +796,7 @@ public class CClient extends JFrame {
 
     } //완성
 
-    public void setChatPage(String roomId) throws SQLException {
+    public void setChatPage() throws SQLException {
         hm.put("cp_flag", true);
         cp.setLayout(null);
 
@@ -810,7 +859,19 @@ public class CClient extends JFrame {
         cp_send.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-
+                try {
+                    cdb.stmt.executeUpdate("insert into chatmessage (roomid, userid, message) values ('" +
+                            roomId+ "', '" + myId + "', '" + cp_msg.getText() + "');");
+                    cp_msg.setText("");
+                    remove(cp);
+                    cp.remove(cp_sp);
+                    loadChat(roomId);
+                    add(cp);
+                    th.revalidate();
+                    th.repaint();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
             }
         });
         cp.add(cp_send);
@@ -828,6 +889,12 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 remove(mcp);
+                cp.remove(cp_sp);
+                try {
+                    loadChat(roomId);
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 add(cp);
                 th.revalidate();
                 th.repaint();
@@ -842,6 +909,8 @@ public class CClient extends JFrame {
 
         mcp_idTF.setBounds(25, 125, 385, 35);
         mcp_idTF.setFont(setFont(mcp_idTF, 25.0f));
+        mcp_idTF.setOpaque(true);
+        mcp_idTF.setBackground(Color.WHITE);
         mcp.add(mcp_idTF);
 
         //날짜
@@ -851,6 +920,8 @@ public class CClient extends JFrame {
 
         mcp_dateTF.setBounds(25, 225, 385, 35);
         mcp_dateTF.setFont(setFont(mcp_dateTF, 25.0f));
+        mcp_dateTF.setOpaque(true);
+        mcp_dateTF.setBackground(Color.WHITE);
         mcp.add(mcp_dateTF);
 
         //내용
@@ -860,6 +931,7 @@ public class CClient extends JFrame {
 
         mcp_contTF.setBounds(25, 325, 385, 250);
         mcp_contTF.setFont(setFont(mcp_contTF, 20.0f));
+        mcp_contTF.setLineWrap(true);
         mcp.add(mcp_contTF);
 
         //수정 버튼
@@ -868,10 +940,18 @@ public class CClient extends JFrame {
         mcp_modify.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                remove(mcp);
-                add(cp);
-                th.revalidate();
-                th.repaint();
+                try {
+                    cdb.stmt.executeUpdate("update chatmessage set message='"+mcp_contTF.getText()
+                            +"' where idx='"+mcp_idTF.getText()+"';");
+                    remove(mcp);
+                    cp.remove(cp_sp);
+                    loadChat(roomId);
+                    add(cp);
+                    th.revalidate();
+                    th.repaint();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
             }
         });
         mcp.add(mcp_modify);
@@ -883,6 +963,17 @@ public class CClient extends JFrame {
         mcp_delete.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                try {
+                    cdb.stmt.executeUpdate("delete from chatmessage where idx='"+mcp_idTF.getText()+"';");
+                    remove(mcp);
+                    cp.remove(cp_sp);
+                    loadChat(roomId);
+                    add(cp);
+                    th.revalidate();
+                    th.repaint();
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
                 remove(mcp);
                 add(cp);
                 th.revalidate();
