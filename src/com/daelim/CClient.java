@@ -17,16 +17,20 @@ public class CClient extends JFrame {
     CDataBase cdb;
     String uriString = "ws://61.83.168.88:4877";
     CSocket c;
-    String nick = null;
 
     String myId = null;
     String myPw = null;
     String roomId = null;
+    String roomPw = null;
+    String roomName = null;
+    int roomnop = 0;
 
     JFrame th;
     GridBagLayout Gbag = new GridBagLayout();
 
     HashMap<String, Boolean> hm = new HashMap<>();
+
+    JSONObject jsono = new JSONObject();
 
     //로그인 페이지
     JPanel lp = new JPanel();
@@ -316,6 +320,8 @@ public class CClient extends JFrame {
                     + roomid + "', '" + roompw + "', '" + roomname + "', " + roomnop + ", '" + userid + "')";
             cdb.stmt.executeUpdate(sql);
             this.roomId = roomid;
+            this.roomnop = roomnop;
+            cdb.stmt.executeUpdate("update chatroom set roomnop='"+ ++this.roomnop +"' where roomid='"+this.roomId+"'");
             return true;
         } else {
             System.out.println("roomid 중복됨");
@@ -327,6 +333,10 @@ public class CClient extends JFrame {
         cdb.rs = cdb.stmt.executeQuery("select * from chatroom where roomid='"+roomid+"' and roompw='"+roompw+"'");
         if (cdb.rs.next()) {
             this.roomId = roomid;
+            roomPw = roompw;
+            roomName = cdb.rs.getString("roomname");
+            roomnop = Integer.parseInt(cdb.rs.getString("roomnop"));
+            cdb.stmt.executeUpdate("update chatroom set roomnop='"+ ++roomnop +"' where roomid='"+this.roomId+"'");
             return true;
         } else {
             System.out.println("로그인 안됨");
@@ -408,12 +418,14 @@ public class CClient extends JFrame {
             i+=2;
         }
 
+        cp_sp.getVerticalScrollBar().setValue(cp_sp.getVerticalScrollBar().getMaximum());
         cp_scp.updateUI();
         cp_scp.revalidate();
         cp_scp.repaint();
         cp_sp.updateUI();
         cp_sp.revalidate();
         cp_sp.repaint();
+        cp_sp.getVerticalScrollBar().setValue(cp_sp.getVerticalScrollBar().getMaximum());
         cp.add(cp_sp);
         cp.updateUI();
         cp.revalidate();
@@ -423,6 +435,22 @@ public class CClient extends JFrame {
     public CClient(CDataBase cdb) throws SQLException {
         this.cdb = cdb;
         th = this;
+        c = new CSocket(uriString, new MessageHandler() {
+            @Override
+            public void handleMessage(JSONObject msg) throws SQLException {
+                String rid = msg.get("roomid") == null ? "share" : "" + msg.get("roomid");
+                cdb.stmt.executeUpdate("insert into chatmessage (roomid, userid, message) values ('" +
+                        rid + "', '" + msg.get("name") + "', '" + msg.get("data") + "');");
+                remove(cp);
+                cp.remove(cp_sp);
+                loadChat(roomId);
+                cp_sp.getVerticalScrollBar().setValue(cp_sp.getVerticalScrollBar().getMaximum());
+                add(cp);
+                th.revalidate();
+                th.repaint();
+            }
+        });
+        c.start();
 //        test();
         setUI();
     }
@@ -748,7 +776,7 @@ public class CClient extends JFrame {
         ctrp_createRoom.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (ctrp_idTF.getText().equals("") || ctrp_pwTF.getText().equals("") || ctrp_roomNameTF.getText().equals("")) {
+                if (ctrp_idTF.getText().equals("") || ctrp_roomNameTF.getText().equals("")) {
                     System.out.println("빈 칸 있음");
                 } else {
                     try {
@@ -808,6 +836,7 @@ public class CClient extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 remove(cp);
                 try {
+                    cdb.stmt.executeUpdate("update chatroom set roomnop='"+ --roomnop +"' where roomid='"+roomId+"'");
                     crp.remove(crp_sp);
                     createRoomList();
                 } catch (SQLException throwables) {
@@ -831,6 +860,9 @@ public class CClient extends JFrame {
                     System.out.println(hm.get("mcrp_flag"));
                     setModifyChatRoomPage();
                 }
+                mcrp_idTF.setText(roomId);
+                mcrp_roomNameTF.setText(roomName);
+//                mcrp_pwTF.setText(roomPw);
                 add(mcrp);
                 th.revalidate();
                 th.repaint();
@@ -839,6 +871,7 @@ public class CClient extends JFrame {
         cp.add(cp_setRoom);
 
         loadChat(roomId);
+        cp_sp.getVerticalScrollBar().setValue(cp_sp.getVerticalScrollBar().getMaximum());
         //이름
 
         //날짜
@@ -860,12 +893,15 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
-                    cdb.stmt.executeUpdate("insert into chatmessage (roomid, userid, message) values ('" +
-                            roomId+ "', '" + myId + "', '" + cp_msg.getText() + "');");
+                    jsono.put("name", myId);
+                    jsono.put("data", cp_msg.getText());
+                    jsono.put("roomid", roomId);
+                    c.sendMsg(jsono.toString());
                     cp_msg.setText("");
                     remove(cp);
                     cp.remove(cp_sp);
                     loadChat(roomId);
+                    cp_sp.getVerticalScrollBar().setValue(cp_sp.getVerticalScrollBar().getMaximum());
                     add(cp);
                     th.revalidate();
                     th.repaint();
@@ -1034,10 +1070,24 @@ public class CClient extends JFrame {
         mcrp_modify.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                remove(mcrp);
-                add(cp);
-                th.revalidate();
-                th.repaint();
+                try {
+                    if (mcrp_pwTF.getText().equals(roomPw)) {
+                        cdb.stmt.executeUpdate("update chatroom set roomid = '" + mcrp_idTF.getText() + "', roomname='" +
+                                mcrp_roomNameTF.getText() + "' where roomid='" + roomId + "';");
+
+                        cdb.stmt.executeUpdate("update chatmessage set roomid = '" + mcrp_idTF.getText() + "' where roomid='" + roomId + "';");
+                        roomId = mcrp_idTF.getText();
+                        roomName = mcrp_roomNameTF.getText();
+                        crp.remove(crp_sp);
+                        createRoomList();
+                        remove(mcrp);
+                        add(cp);
+                        th.revalidate();
+                        th.repaint();
+                    }
+                } catch (SQLException throwables) {
+                    throwables.printStackTrace();
+                }
             }
         });
         mcrp.add(mcrp_modify);
@@ -1049,48 +1099,23 @@ public class CClient extends JFrame {
         mcrp_delete.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                remove(mcrp);
                 try {
-                    crp.remove(crp_sp);
-                    createRoomList();
+                    if (mcrp_pwTF.getText().equals(roomPw)) {
+                        cdb.stmt.executeUpdate("delete from chatroom where roomid='" + roomId + "';");
+                        cdb.stmt.executeUpdate("delete from chatmessage where roomid='" + roomId + "';");
+                        crp.remove(crp_sp);
+                        createRoomList();
+                        remove(mcrp);
+                        add(crp);
+                        th.revalidate();
+                        th.repaint();
+                    }
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
                 }
-                add(crp);
-                th.revalidate();
-                th.repaint();
             }
         });
         mcrp.add(mcrp_delete);
     } //완성
-
-    public void test() throws SQLException {
-        cdb.rs = cdb.stmt.executeQuery("select * from chatmessage");
-        if (!cdb.rs.next()) {
-            System.out.println("데이터 없음");
-        }
-        while(cdb.rs.next()) {
-            System.out.println(cdb.rs.getInt("idx"));
-        }
-        c = new CSocket(uriString, new MessageHandler() {
-            @Override
-            public void handleMessage(String message) {
-                System.out.println(message);
-            }
-        });
-        c.start();
-        while(true) {
-            Scanner sc = new Scanner(System.in);
-            String str = sc.nextLine();
-            if (str.equals("exit0")) break;
-            JSONObject jsono = new JSONObject();
-            jsono.put("name", nick);
-            jsono.put("data", str);
-            c.sendMsg(jsono.toString());
-        }
-        c.end();
-        System.out.println("끝");
-    }
-
 
 }

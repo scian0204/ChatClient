@@ -48,13 +48,8 @@ public class CSocket {
                     System.out.println("onMessage :: " + s);
 
                     JSONObject msg = (JSONObject) (new JSONParser()).parse(s);
-                    String str = getTime() + " || [ " + msg.get("name") + " ] : " + msg.get("data") + "\n";
 
-                    if (t == null) {
-                        handler.handleMessage(str);
-                    } else {
-                        t.append(str);
-                    }
+                    handler.handleMessage(msg);
 
                 }catch (Exception e) {
                     e.printStackTrace();
