@@ -435,6 +435,7 @@ public class CClient extends JFrame {
     public CClient(CDataBase cdb) throws SQLException {
         this.cdb = cdb;
         th = this;
+        th.setTitle("Chat Client");
         c = new CSocket(uriString, new MessageHandler() {
             @Override
             public void handleMessage(JSONObject msg) throws SQLException {
