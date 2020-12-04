@@ -6,6 +6,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.*;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ public class CClient extends JFrame {
     HashMap<String, Boolean> hm = new HashMap<>();
 
     JSONObject jsono = new JSONObject();
+
+    JOptionPane jo = new JOptionPane();
 
     //로그인 페이지
     JPanel lp = new JPanel();
@@ -177,22 +180,32 @@ public class CClient extends JFrame {
     void loginCheck() {
         if (lp_idTF.getText().equals("") || lp_pwTF.getText().equals("")) {
             System.out.println("아이디나 패스워드 입력 안됨");
-//            jp0.add(idPwW);
-//            th.revalidate();
-//            th.repaint();
+            jo.showMessageDialog(null, "아이디나 패스워드 입력 안됨");
         } else {
             try {
                 cdb.rs = cdb.stmt.executeQuery("Select userpw from member where userid='" + lp_idTF.getText() + "'");
                 if (!cdb.rs.next()) {
                     System.out.println("id 일치하지 않음");
-//                    jp0.add(idNfW);
-//                    th.revalidate();
-//                    th.repaint();
+                    jo.showMessageDialog(null, "id 일치하지 않음");
                 } else {
                     if (cdb.rs.getString("userpw").equals(lp_pwTF.getText())) {
                         System.out.println("로그인 됨");
                         myId = lp_idTF.getText();
                         myPw = lp_pwTF.getText();
+                        //파일 객체 생성
+                        File file = new File("C:\\temp\\CClientL.txt");
+                        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(file));
+
+                        if(file.isFile() && file.canWrite()){
+                            //쓰기
+                            bufferedWriter.write("id/s/" + myId + " id/e/");
+                            //개행문자쓰기
+                            bufferedWriter.newLine();
+                            bufferedWriter.write("pw/s/" + myPw + " pw/e/");
+
+                            bufferedWriter.close();
+                        }
+
                         remove(lp);
                         if (!hm.get("crp_flag")) {
                             System.out.println(hm.get("crp_flag"));
@@ -202,17 +215,14 @@ public class CClient extends JFrame {
                             createRoomList();
                         }
                         add(crp);
-                        th.revalidate();
-                        th.repaint();
-
+                        revalidate();
+                        repaint();
                     } else {
                         System.out.println("비밀번호 일치하지 않음");
-//                        jp0.add(pwNfW);
-//                        th.revalidate();
-//                        th.repaint();
+                        jo.showMessageDialog(null, "비밀번호 일치하지 않음");
                     }
                 }
-            } catch (SQLException ex) {
+            } catch (SQLException | IOException ex) {
                 ex.printStackTrace();
             }
         }
@@ -222,11 +232,13 @@ public class CClient extends JFrame {
 //        removeWM();
         if (rp_idTF.getText().equals("") || rp_pwTF.getText().equals("") || rp_pwrTF.getText().equals("") || rp_nameTF.getText().equals("") || rp_emailTF.getText().equals("")) {
             System.out.println("빈칸 있음");
+            jo.showMessageDialog(null, "빈칸 있음");
 //            jp0_1.add(nullW);
 //            th.revalidate();
 //            th.repaint();
         } else if (!rp_pwTF.getText().equals(rp_pwrTF.getText())) {
             System.out.println("비밀번호가 일치하지 않음");
+            jo.showMessageDialog(null, "비밀번호가 일치하지 않음");
 //            System.out.println(rp_pwTF.getText() + " || " + rp_pwrTF.getText());
 //            jp0_1.add(pwNmW);
 //            th.revalidate();
@@ -255,6 +267,7 @@ public class CClient extends JFrame {
                     th.repaint();
                 } else {
                     System.out.println("아이디 중복됨");
+                    jo.showMessageDialog(null, "아이디 중복됨");
 //                    jp0_1.add(idOverlap);
 //                    th.revalidate();
 //                    th.repaint();
@@ -325,6 +338,7 @@ public class CClient extends JFrame {
             return true;
         } else {
             System.out.println("roomid 중복됨");
+            jo.showMessageDialog(null, "roomid 중복됨");
             return false;
         }
     }
@@ -340,6 +354,7 @@ public class CClient extends JFrame {
             return true;
         } else {
             System.out.println("로그인 안됨");
+            jo.showMessageDialog(null, "로그인 안됨");
             return false;
         }
     }
@@ -432,16 +447,17 @@ public class CClient extends JFrame {
         cp.repaint();
     }
 
-    public CClient(CDataBase cdb) throws SQLException {
+    public CClient(CDataBase cdb) throws SQLException, FileNotFoundException {
         this.cdb = cdb;
         th = this;
         th.setTitle("Chat Client");
         c = new CSocket(uriString, new MessageHandler() {
             @Override
             public void handleMessage(JSONObject msg) throws SQLException {
-                String rid = msg.get("roomid") == null ? "share" : "" + msg.get("roomid");
-                cdb.stmt.executeUpdate("insert into chatmessage (roomid, userid, message) values ('" +
-                        rid + "', '" + msg.get("name") + "', '" + msg.get("data") + "');");
+                if (msg.get("roomid") == null) {
+                    cdb.stmt.executeUpdate("insert into chatmessage (roomid, userid, message) values ('" +
+                            "share" + "', '" + msg.get("name") + "', '" + msg.get("data") + "');");
+                }
                 remove(cp);
                 cp.remove(cp_sp);
                 loadChat(roomId);
@@ -456,7 +472,7 @@ public class CClient extends JFrame {
         setUI();
     }
 
-    public void setUI() {
+    public void setUI() throws FileNotFoundException, SQLException {
         setSize(450, 800);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -471,7 +487,54 @@ public class CClient extends JFrame {
 
         setLoginPage();
 //        setChatRoomPage();
-        add(lp);
+        String fileS = null;
+        File file = new File("C:\\temp\\CClientL.txt");
+        if (file.exists()) {
+            Scanner scan = new Scanner(file);
+            while (scan.hasNextLine()) {
+                fileS += scan.nextLine();
+            }
+            if (fileS.contains("id/s/") && fileS.contains("pw/s/")) {
+                int id_sI = fileS.indexOf("id/s/");
+                int id_eI = fileS.indexOf("id/e/");
+                int pw_sI = fileS.indexOf("pw/s/");
+                int pw_eI = fileS.indexOf("pw/e/");
+                String fileId = fileS.substring(id_sI + 5, id_eI-1);
+                String filePw = fileS.substring(pw_sI + 5, pw_eI-1);
+
+                lp_idTF.setText(fileId);
+                lp_pwTF.setText(filePw);
+
+                cdb.rs = cdb.stmt.executeQuery("Select userpw from member where userid='" + lp_idTF.getText() + "'");
+                if (!cdb.rs.next()) {
+                    System.out.println("id 일치하지 않음");
+                    jo.showMessageDialog(null, "id 일치하지 않음");
+
+                } else {
+                    if (cdb.rs.getString("userpw").equals(lp_pwTF.getText())) {
+                        System.out.println("로그인 됨");
+                        myId = lp_idTF.getText();
+                        myPw = lp_pwTF.getText();
+
+                        if (!hm.get("crp_flag")) {
+                            System.out.println(hm.get("crp_flag"));
+                            setChatRoomPage();
+                        } else {
+                            crp.remove(crp_sp);
+                            createRoomList();
+                        }
+                        add(crp);
+                        revalidate();
+                        repaint();
+                    } else {
+                        System.out.println("비밀번호 일치하지 않음");
+                        jo.showMessageDialog(null, "비밀번호 일치하지 않음");
+                        add(lp);
+                    }
+                }
+
+            }
+        }
         setVisible(true);
     }
 
@@ -526,6 +589,7 @@ public class CClient extends JFrame {
             }
         });
         lp.add(lp_registB);
+
 
     } //완성
 
@@ -779,6 +843,7 @@ public class CClient extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 if (ctrp_idTF.getText().equals("") || ctrp_roomNameTF.getText().equals("")) {
                     System.out.println("빈 칸 있음");
+                    jo.showMessageDialog(null, "빈 칸 있음");
                 } else {
                     try {
                         if (createRoom(ctrp_idTF.getText(), ctrp_pwTF.getText(), ctrp_roomNameTF.getText())) {
@@ -894,6 +959,8 @@ public class CClient extends JFrame {
             @Override
             public void actionPerformed(ActionEvent e) {
                 try {
+                    cdb.stmt.executeUpdate("insert into chatmessage (roomid, userid, message) values ('" +
+                            roomId + "', '" + myId + "', '" + cp_msg.getText() + "');");
                     jsono.put("name", myId);
                     jsono.put("data", cp_msg.getText());
                     jsono.put("roomid", roomId);
@@ -977,17 +1044,20 @@ public class CClient extends JFrame {
         mcp_modify.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    cdb.stmt.executeUpdate("update chatmessage set message='"+mcp_contTF.getText()
-                            +"' where idx='"+mcp_idTF.getText()+"';");
-                    remove(mcp);
-                    cp.remove(cp_sp);
-                    loadChat(roomId);
-                    add(cp);
-                    th.revalidate();
-                    th.repaint();
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
+                int result = jo.showConfirmDialog(null, "수정 하시겠습니까?");
+                if (result == jo.YES_OPTION) {
+                    try {
+                        cdb.stmt.executeUpdate("update chatmessage set message='" + mcp_contTF.getText()
+                                + "' where idx='" + mcp_idTF.getText() + "';");
+                        remove(mcp);
+                        cp.remove(cp_sp);
+                        loadChat(roomId);
+                        add(cp);
+                        th.revalidate();
+                        th.repaint();
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
                 }
             }
         });
@@ -1000,21 +1070,24 @@ public class CClient extends JFrame {
         mcp_delete.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    cdb.stmt.executeUpdate("delete from chatmessage where idx='"+mcp_idTF.getText()+"';");
+                int result = jo.showConfirmDialog(null, "삭제 하시겠습니까?");
+                if (result == jo.YES_OPTION) {
+                    try {
+                        cdb.stmt.executeUpdate("delete from chatmessage where idx='"+mcp_idTF.getText()+"';");
+                        remove(mcp);
+                        cp.remove(cp_sp);
+                        loadChat(roomId);
+                        add(cp);
+                        th.revalidate();
+                        th.repaint();
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
                     remove(mcp);
-                    cp.remove(cp_sp);
-                    loadChat(roomId);
                     add(cp);
                     th.revalidate();
                     th.repaint();
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
                 }
-                remove(mcp);
-                add(cp);
-                th.revalidate();
-                th.repaint();
             }
         });
         mcp.add(mcp_delete);
@@ -1071,23 +1144,26 @@ public class CClient extends JFrame {
         mcrp_modify.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    if (mcrp_pwTF.getText().equals(roomPw)) {
-                        cdb.stmt.executeUpdate("update chatroom set roomid = '" + mcrp_idTF.getText() + "', roomname='" +
-                                mcrp_roomNameTF.getText() + "' where roomid='" + roomId + "';");
+                int result = jo.showConfirmDialog(null, "수정 하시겠습니까?");
+                if (result == jo.YES_OPTION) {
+                    try {
+                        if (mcrp_pwTF.getText().equals(roomPw)) {
+                            cdb.stmt.executeUpdate("update chatroom set roomid = '" + mcrp_idTF.getText() + "', roomname='" +
+                                    mcrp_roomNameTF.getText() + "' where roomid='" + roomId + "';");
 
-                        cdb.stmt.executeUpdate("update chatmessage set roomid = '" + mcrp_idTF.getText() + "' where roomid='" + roomId + "';");
-                        roomId = mcrp_idTF.getText();
-                        roomName = mcrp_roomNameTF.getText();
-                        crp.remove(crp_sp);
-                        createRoomList();
-                        remove(mcrp);
-                        add(cp);
-                        th.revalidate();
-                        th.repaint();
+                            cdb.stmt.executeUpdate("update chatmessage set roomid = '" + mcrp_idTF.getText() + "' where roomid='" + roomId + "';");
+                            roomId = mcrp_idTF.getText();
+                            roomName = mcrp_roomNameTF.getText();
+                            crp.remove(crp_sp);
+                            createRoomList();
+                            remove(mcrp);
+                            add(cp);
+                            th.revalidate();
+                            th.repaint();
+                        }
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
                     }
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
                 }
             }
         });
@@ -1100,19 +1176,22 @@ public class CClient extends JFrame {
         mcrp_delete.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                try {
-                    if (mcrp_pwTF.getText().equals(roomPw)) {
-                        cdb.stmt.executeUpdate("delete from chatroom where roomid='" + roomId + "';");
-                        cdb.stmt.executeUpdate("delete from chatmessage where roomid='" + roomId + "';");
-                        crp.remove(crp_sp);
-                        createRoomList();
-                        remove(mcrp);
-                        add(crp);
-                        th.revalidate();
-                        th.repaint();
+                int result = jo.showConfirmDialog(null, "삭제 하시겠습니까?");
+                if (result == jo.YES_OPTION) {
+                    try {
+                        if (mcrp_pwTF.getText().equals(roomPw)) {
+                            cdb.stmt.executeUpdate("delete from chatroom where roomid='" + roomId + "';");
+                            cdb.stmt.executeUpdate("delete from chatmessage where roomid='" + roomId + "';");
+                            crp.remove(crp_sp);
+                            createRoomList();
+                            remove(mcrp);
+                            add(crp);
+                            th.revalidate();
+                            th.repaint();
+                        }
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
                     }
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
                 }
             }
         });
